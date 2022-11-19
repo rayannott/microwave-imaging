@@ -9,6 +9,8 @@ import nibabel
 import numpy as np
 from matplotlib import pyplot as plt
 
+import time
+
 
 def import_volume(file_path):
     """Import 3D volumetric data from file.
@@ -65,7 +67,7 @@ def compute_slice(_volume, _z_idx=0):
     return img
 
 
-def compute_mip(_volume):
+def compute_mip_z(_volume):
     """Compute the maximum intensity projection (MIP) of a 3D volume.
 
     Args:
@@ -80,6 +82,21 @@ def compute_mip(_volume):
     v_max = _volume[i, j, k_max]
 
     return v_max, k_max
+
+
+def compute_mip_y(_volume):
+    j_max = np.argmax(np.abs(_volume), axis=1)
+    i, k = np.indices(j_max.shape)
+    v_max = _volume[i, j_max, k]
+
+    return v_max, j_max
+
+def compute_mip_x(_volume):
+    i_max = np.argmax(np.abs(_volume), axis=0)
+    j, k = np.indices(i_max.shape)
+    v_max = _volume[i_max, j, k]
+
+    return v_max, i_max
 
 
 def complex2magphase(data):
@@ -111,15 +128,28 @@ def compute_fft(img):
     fft_img = np.fft.fftshift(np.fft.fft2(img), axes=(0, 1))
     return fft_img
 
+def discrete_cmap(N, base_cmap=None):
+    """Create an N-bin discrete colormap from the specified input map"""
+
+    # Note that if base_cmap is a string or None, you can simply do
+    #    return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return base.from_list(cmap_name, color_list, N)
 
 def display(
     img,
-    color_map=plt.get_cmap("viridis"),
+    color_map=discrete_cmap(2, 'cubehelix'),
     img_title=None,
     cmap_label=None,
     alphadata=None,
     xvec=None,
     yvec=None,
+    zvec=None,
+    axis='z',
     dynamic_range=None,
     clim=None,
     xlabel=None,
@@ -145,14 +175,20 @@ def display(
     else:
         imshow_args = {"vmin": max_image - dynamic_range, "vmax": max_image}
 
-    if xvec is None or yvec is None:
+    if xvec is None or yvec is None or zvec is None:
         plt.imshow(img, cmap=color_map, alpha=alphadata, origin="lower", **imshow_args)
     else:
+        if axis == 'z':
+            extent=[xvec[0], xvec[-1], yvec[0], yvec[-1]]
+        elif axis == 'y':
+            extent=[xvec[0], xvec[-1], zvec[0], zvec[-1]]
+        elif axis == 'x':
+            extent=[yvec[0], yvec[-1], zvec[0], zvec[-1]]
         plt.imshow(
             img,
             cmap=color_map,
             alpha=alphadata,
-            extent=[xvec[0], xvec[-1], yvec[0], yvec[-1]],
+            extent=extent,
             origin="lower",
             **imshow_args,
         )
@@ -169,7 +205,7 @@ def display(
     if ylabel is not None:
         plt.ylabel(ylabel)
 
-    cbar = plt.colorbar()
-    cbar.ax.set_ylabel(cmap_label)
+    cbar = plt.colorbar(ticks=range(2))
+    # cbar.ax.set_ylabel(cmap_label)
+    plt.savefig(f'figs/{int(time.time())}.png')
     plt.show()
-
