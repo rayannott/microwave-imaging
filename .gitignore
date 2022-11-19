@@ -3,3 +3,4 @@ data/dummy/
 data/radar/
 __pycache__/
 stats.json
+venv/
