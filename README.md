@@ -1,2 +1,2 @@
 # microwave-imaging
-HackaTUM project
+HackaTUM project combining 3D Fourier transforms and machine learning.
